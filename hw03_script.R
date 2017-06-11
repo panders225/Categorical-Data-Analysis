@@ -215,6 +215,7 @@ c(
 
 trt_thic <- c(rep(0,5), rep(1,5), rep(0,5), rep(1,5))
 
+
 silicon_mv <- glm(formula=trt ~ trt_fl + trt_thic  
                 , family=poisson(link=log)
                    )
@@ -223,7 +224,179 @@ summary(silicon_mv)
 
 exp(-0.2296)
 
+# model is a good fit for the data
+pchisq(deviance(silicon_mv), df.residual(silicon_mv), lower.tail = FALSE)
+
 # high levels of wafer thickness are associated with lower rates
 # of imperfections
-# having a thicker wafer results in an 80% chance of imperfection rate
+# having a thicker wafer results in an odds ratio that is 80% lower
+# than having a thin wafer
+
+# Question 3.13 - HORSESHOE CRAB TIME
+# import the data
+
+
+crabby <- read.csv('C:/Users/Philip/Schools/TAMU/STAT_659/homework/git_hw/agresti_crab.csv')
+
+# 3.13A - using x = weight and y = num(satellites), fit a Poisson
+# loglinear regression
+
+crab_model <- glm(
+                  formula=satell ~ weight
+                  , data=crabby
+                  , family=poisson(link=log)
+                  )
+
+summary(crab_model)
+
+#asses the fit of the model
+pchisq(deviance(crab_model), df.residual(crab_model), lower.tail = FALSE)
+# horrible, but we will proceed anyway
+
+# 3.13B - estimate the mean of Y for female crabs, average weight 2.44kg
+
+predict(crab_model, newdata = data.frame(weight=c(2.44)) ) %>%
+  exp()
+
+# 3.13C - use beta_hat to describe the weight effect 
+summary(crab_model)
+summary(crab_model)$coefficients[2,2]
+(crab_bh <- summary(crab_model)$coefficients[2,1])
+(crab_se <- summary(crab_model)$coefficients[2,2])
+
+(lb <- crab_bh - qnorm(0.975)*crab_se)
+(ub <- crab_bh + qnorm(0.975)*crab_se)
+exp(lb);exp(ub)
+
+# 3.13D - conduct a wald test on the weight coefficient
+paste(crab_bh, "/", crab_se, "^2")
+# the asymptotic wald statistic has a N(0,1) dist
+# squaring it results in a chi-squared distribution with df=1
+(crab_wald2 <- (crab_bh/crab_se)**2)
+pchisq(crab_wald2, df=1, lower.tail=F)
+#strong significance 
+
+# 3.13E - conduct the likelihood ratio test 
+
+(crab_lr <- anova(crab_model)$Deviance[2])
+(crab_lrdf <- anova(crab_model)$Df[2])
+pchisq(crab_lr, df=crab_lrdf, lower.tail=FALSE)
+# strong significance of a relationship between the log(weight)
+
+# 3.14 - still using the crabby dset, fit the same model
+# but now assuming a negative binomial distribution for the response
+library(MASS)
+help(MASS::glm.nb())
+crabby_nb <- MASS::glm.nb(
+                          formula=satell ~ weight
+                          , data=crabby
+                          , link=log
+                          )
+
+summary(crabby_nb)
+
+# 3.14A - report the prediction equation
+summary(crabby_nb) %>%
+  str()
+
+# make this object actually useful
+crabby_nb2 <- MASS::glm.convert(crabby_nb)
+
+(crab_nb_coef <- summary(crabby_nb2)$coefficients)
+
+crab_nb_coef[1,1]
+crab_nb_coef[2,1]
+
+# find the estimate of the dispersion parameter
+crabby_nb2$theta
+crabby_nb2$SE.theta
+
+pchisq(deviance(crabby_nb2), df.residual(crabby_nb2), lower.tail=FALSE)
+# much better evidence of this model fitting the data than Poisson via test
+
+# we can use the Rootogram to visually assess fit
+library("countreg")
+
+countreg::rootogram(crabby_nb2, main="Neg. Binomial Fit")
+countreg::rootogram(crab_model, main="Poisson Fit")
+
+# 3.14B - construct a 95% confidence interval for Beta
+
+summary(crabby_nb2)
+(crab_nb_bh <- summary(crabby_nb2)$coefficients[2,1])
+(crab_nb_se <- summary(crabby_nb2)$coefficients[2,2])
+
+(lb_nb <- crab_nb_bh - qnorm(0.975)*crab_nb_se)
+(ub_nb <- crab_nb_bh + qnorm(0.975)*crab_nb_se)
+
+# compare to the poisson model's beta confidence interval
+paste(lb_nb, ub_nb)
+paste(lb, ub)
+# interval is slightly wider under the negative binomial model
+# this is likely because we are allowing for the possibility of 
+# overdispersion in our data
+  
+
+# 3.18
+# first, input the data
+three_18 <- cbind(
+            c(404, 286, 443, 169, 222
+            , 150, 321, 189, 258, 223
+            , 211, 215, 108, 210, 224
+            , 211, 168, 185, 158, 429
+            , 226, 150, 148)
+            
+            , c(308, 197, 184, 149, 132, 126, 110
+            , 101, 99, 81, 79, 78, 68
+            , 67, 60, 57, 55, 44, 38, 35, 29, 20, 19)
+            ) %>%
+  data.frame()
+names(three_18) <- c("attend", "arrests")
+# if the number of arrests is a low-variance proportion of the total
+# attendance, modeling arrests as a function of attendance could make sense
+
+# 3.18B
+soccer <- glm(
+              formula = arrests ~ attend
+              , data=three_18
+              , family=poisson(link="log")
+              )
+summary(soccer)
+
+soccer_test <- glm(
+                  formula=arrests/attend 
+                  , data=three_18
+                  , family=poisson(link="log")
+                    )
+
+summary(soccer_test)
+exp(summary(soccer_test)$coefficients[2,1])  
+
+# 3.18C - plot arrests against attendance 
+
+plot(
+    y=three_18$arrests
+    , x=three_18$attend 
+    , main = "Arrests by Attendance"
+    , xlab="Attendance"
+    , ylab="Arrests"
+    )
+summary(soccer_test)
+soccer_test$coefficients[2]
+x_var <- seq(min(three_18$attend), max(three_18$attend), by=1)
+y_var <- (
+            soccer_test$coefficients[1] + 
+            exp(soccer_test$coefficients[2])*x_var
+          )
+lines(x_var, y_var)  
+x_var  
+y_var
+three_18  
+
+
+# 3.19
+1 - pchisq(11.6, df=1)
+
+2.59**2
+1 - pchisq(2.59**2, df=1)
 
