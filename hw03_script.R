@@ -400,3 +400,119 @@ three_18
 2.59**2
 1 - pchisq(2.59**2, df=1)
 
+# 3.20
+# first, input the data
+
+age_range <- c("35-44", "35-44", "45-54", "45-54", "55-64"
+      , "55-64", "65-74", "65-74", "75-84", "75-84")
+age_scores <- seq(1,5,by=1) %>% rep(2)
+years<- c(18793, 52407, 10673, 43248, 5710, 28612
+        ,2585, 12663, 1462, 5317) / 1000
+deaths <- c(2, 32, 12, 104, 28, 206, 28, 186, 31, 102)
+smoke <- rep(seq(0,1,by=1), 5)
+
+celebrate <- cbind(years, deaths, smoke, age_scores) %>%
+  data.frame()
+celebrate$age_range <- as.factor(age_range)
+
+# 3.20A - compute the sample coronary death rate per 1000 person-years
+
+(one<- with(
+  dplyr::filter(celebrate, smoke==0)
+  , tapply(deaths/years, age_range, function(x){
+      sprintf("Mean=%1.5f", mean(x))
+      }
+    )
+  )
+)
+(two <- with(
+  dplyr::filter(celebrate, smoke==1)
+  , tapply(deaths/years, age_range, function(x){
+      sprintf("Mean=%1.5f", mean(x))
+      }
+    )
+  )
+)
+
+# signal not consistent - smoking appears to be associated with 
+# higher death rates at some ages and lower death rates at others
+
+# 3.20D 
+# specify a main-effects poisson model for log rates
+
+celebrate_mod <- glm(
+                    formula=deaths ~ age_range + smoke + offset(log(years))
+                    , data=celebrate
+                    , family=poisson(link="log")
+                    )
+summary(celebrate_mod)
+
+# The model assumes a constant ratio of death rates because it doesnt
+# allow for an interaction between age and smoking
+
+celebrate_mod2 <- glm(
+      formula=deaths ~ age_range + smoke + age_scores*smoke + offset(log(years))
+                    , data=celebrate
+                    , family=poisson(link="log")
+                    )
+summary(celebrate_mod2)
+
+deviance(celebrate_mod) ; deviance(celebrate_mod2)
+(dev_diff <- deviance(celebrate_mod) - deviance(celebrate_mod2))
+1 - pchisq(dev_diff, df=1)
+
+# term needed - deviance significant
+
+# additional question number 2
+help("zeroinfl")
+# fire up the zip glm
+zip1 <- pscl::zeroinfl(
+            formula=satell ~ weight |  weight
+              , data=crabby
+              , dist="poisson"
+                )
+summary(zip1)
+AIC(zip1)
+
+zip2 <- pscl::zeroinfl(
+            formula=satell ~ weight | 1
+              , data=crabby
+              , dist="poisson"
+                )
+summary(zip2)
+AIC(zip2)
+
+zip3 <- pscl::zeroinfl(
+            formula=satell ~ weight |  weight
+              , data=crabby
+              , dist="negbin"
+                )
+summary(zip3)
+AIC(zip3)
+
+zip4 <- pscl::zeroinfl(
+            formula=satell ~ weight |  1
+              , data=crabby
+              , dist="negbin"
+                )
+summary(zip4)
+AIC(zip4)
+
+# compare and contrast
+AIC(crab_model)
+
+print("____________")
+paste("Model 1", AIC(crab_model))
+print("____________")
+paste("Model 2", AIC(crabby_nb2))
+print("____________")
+paste("Model 3", AIC(zip1))
+print("____________")
+paste("Model 4", AIC(zip2))
+print("____________")
+paste("Model 5", AIC(zip3))
+print("____________")
+paste("Model 6", AIC(zip4))
+
+# The Negative Binomial Model with weight in the zero model 
+# has the lowest AIC of the six models fit
