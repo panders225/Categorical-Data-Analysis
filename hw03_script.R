@@ -27,6 +27,17 @@ table(ungrouped$outcome, ungrouped$alc)
 test <- lm(outcome ~ alc, data=ungrouped)
 summary(test)
 
+# group it up
+present <- c(48,38,5,1,1)
+total <- c(17114, 14502, 793, 127, 38)
+scores <- c(0, 0.5, 1.5, 4.0, 7.0)
+
+grouped_mod <- lm(present/total ~ scores, weights=total)
+summary(grouped_mod)  
+
+present_pct <- c(0.28, 0.26, 0.63, 0.79, 2.63)
+tester <- lm(present_pct ~ scores, weight=total)
+summary(tester)
 
 # perform a sensitivity analysis by removing the observation
 # where outcome == 1 and alc==7
@@ -79,9 +90,9 @@ summary(score_sens_lm)
 # the F-test.  Even if we had significance, the term on the alc
 # variable is mchmuch lower.
 
-re_score_sens <- predict(score_sens_lm
+(re_score_sens <- predict(score_sens_lm
                     , data.frame(alc=c(0,7))) %>%
-                  data.frame()
+                  data.frame())
 
 re_score_sens[2,1] / re_score_sens[1,1]
 
@@ -149,11 +160,14 @@ summary(snore_glm_ii)
 summary(snore_glm_iii)
 
 # compare the parameters
-cbind(snore_glm_i$coefficients
+(snoring <- cbind(snore_glm_i$coefficients
       , snore_glm_ii$coefficients
       , snore_glm_iii$coefficients
       ) %>%
-  as.matrix(, nrow=2)
+  as.matrix(, nrow=2) %>%
+  data.frame())
+names(snoring) <- c("i", "ii", "iii")
+snoring
 # estimated coefficients are identical
 
 # compare the fitted values
@@ -171,13 +185,14 @@ cbind(snore_glm_i$fitted.values
 
 trt_a <- c(8,7,6,6,3,4,7,2,3,4)
 trt_b <- c(9,9,8,14,8,13,11,5,7,6)
-trt<- c(trt_a, trt_b)
+(trt<- c(trt_a, trt_b))
 
-trt_fl <- c(rep(0, 10), rep(1,10))
+(trt_fl <- c(rep(0, 10), rep(1,10)))
 
 # 3.11 B - fit a poisson model to the above data
 
-silicon_mod <- glm(formula=trt ~ trt_fl
+silicon_mod <- glm(
+                formula=trt ~ trt_fl
                 , family=poisson(link=log)
                    )
 summary(silicon_mod)
@@ -201,7 +216,7 @@ anova(silicon_mod)
 # the anova function gives the LR statistic
 test <- anova(silicon_mod)
 1-pchisq(test$Deviance[2], df=test$Df[2])
-
+1 - pchisq(11.589, df=1)
 # 3.11D - generate confidence intervals for mu_b / mu_a
 
 c(
@@ -225,8 +240,18 @@ summary(silicon_mv)
 exp(-0.2296)
 
 # model is a good fit for the data
-pchisq(deviance(silicon_mv), df.residual(silicon_mv), lower.tail = FALSE)
 
+pchisq(deviance(silicon_mv), df.residual(silicon_mv), lower.tail = FALSE)
+pchisq(deviance(silicon_mod), df.residual(silicon_mod), lower.tail = FALSE)
+
+1-pchisq(deviance(silicon_mod) - deviance(silicon_mv), df=1)
+
+silicon_test <- glm(
+                  formula=trt ~ trt_fl + trt_thic + (trt_fl*trt_thic)
+                  , family=poisson(link="log")
+                    )
+summary(silicon_test)
+deviance(silicon_test)
 # high levels of wafer thickness are associated with lower rates
 # of imperfections
 # having a thicker wafer results in an odds ratio that is 80% lower
@@ -274,6 +299,7 @@ paste(crab_bh, "/", crab_se, "^2")
 # squaring it results in a chi-squared distribution with df=1
 (crab_wald2 <- (crab_bh/crab_se)**2)
 pchisq(crab_wald2, df=1, lower.tail=F)
+summary(crab_model)
 #strong significance 
 
 # 3.13E - conduct the likelihood ratio test 
@@ -286,7 +312,6 @@ pchisq(crab_lr, df=crab_lrdf, lower.tail=FALSE)
 # 3.14 - still using the crabby dset, fit the same model
 # but now assuming a negative binomial distribution for the response
 library(MASS)
-help(MASS::glm.nb())
 crabby_nb <- MASS::glm.nb(
                           formula=satell ~ weight
                           , data=crabby
@@ -310,6 +335,9 @@ crab_nb_coef[2,1]
 # find the estimate of the dispersion parameter
 crabby_nb2$theta
 crabby_nb2$SE.theta
+
+pchisq(deviance(crab_model) - deviance(crabby_nb2), df=1, lower.tail=FALSE)
+
 
 pchisq(deviance(crabby_nb2), df.residual(crabby_nb2), lower.tail=FALSE)
 # much better evidence of this model fitting the data than Poisson via test
@@ -339,7 +367,7 @@ paste(lb, ub)
 
 # 3.18
 # first, input the data
-three_18 <- cbind(
+soccer_dat <- cbind(
             c(404, 286, 443, 169, 222
             , 150, 321, 189, 258, 223
             , 211, 215, 108, 210, 224
@@ -351,48 +379,70 @@ three_18 <- cbind(
             , 67, 60, 57, 55, 44, 38, 35, 29, 20, 19)
             ) %>%
   data.frame()
-names(three_18) <- c("attend", "arrests")
+names(soccer_dat) <- c("attend", "arrests")
 # if the number of arrests is a low-variance proportion of the total
 # attendance, modeling arrests as a function of attendance could make sense
 
 # 3.18B
-soccer <- glm(
+soccer_mod <- glm(
               formula = arrests ~ attend
-              , data=three_18
-              , family=poisson(link="log")
+              , data=soccer_dat
+              , family=poisson(link="identity")
               )
-summary(soccer)
+summary(soccer_mod)
 
-soccer_test <- glm(
-                  formula=arrests/attend 
-                  , data=three_18
+soccer_mod2 <- glm(
+                  formula=arrests ~ 1 + offset(log(attend)) 
+                  , data=soccer_dat
                   , family=poisson(link="log")
                     )
 
-summary(soccer_test)
-exp(summary(soccer_test)$coefficients[2,1])  
+summary(soccer_mod2)
+
+soccer_mod3 <- glm(
+                  formula=arrests ~ attend
+                  , data=soccer_dat
+                  , family=poisson(link="log")
+                  )
+summary(soccer_mod3)
+summary(soccer_mod)
 
 # 3.18C - plot arrests against attendance 
 
 plot(
-    y=three_18$arrests
-    , x=three_18$attend 
+    y=soccer_dat$arrests
+    , x=soccer_dat$attend 
     , main = "Arrests by Attendance"
     , xlab="Attendance"
     , ylab="Arrests"
     )
-summary(soccer_test)
-soccer_test$coefficients[2]
-x_var <- seq(min(three_18$attend), max(three_18$attend), by=1)
-y_var <- (
-            soccer_test$coefficients[1] + 
-            exp(soccer_test$coefficients[2])*x_var
-          )
-lines(x_var, y_var)  
-x_var  
-y_var
-three_18  
 
+x_var <- seq(min(soccer_dat$attend), max(soccer_dat$attend), by=1)
+y_var <- (
+            soccer_mod2$coefficients[1] + 
+            soccer_mod2$coefficients[2]*x_var
+          ) %>% exp()
+lines(x_var, y_var)  
+
+plot(soccer_mod2)
+soccer_mod$residuals
+
+# aston villa had more than expected, and manchester city had fewer
+
+soccer_mod2
+
+soccer_mod4 <- MASS::glm.nb(
+                  formula=arrests ~ 1 + offset(log(attend))
+                  , data=soccer_dat
+                  , link=log
+                            )
+summary(soccer_mod4)
+summary(soccer_mod2)
+deviance(soccer_mod2);deviance(soccer_mod4)
+coefficients(soccer_mod2); coefficients(soccer_mod4)
+# the dispersion parameter is over 3, and has a standard error 
+# of 0.9; the dispersion parameter estimate being 3 sd's above 0
+# is a pretty good indication that the poisson model is inadequate
 
 # 3.19
 1 - pchisq(11.6, df=1)
@@ -464,7 +514,6 @@ deviance(celebrate_mod) ; deviance(celebrate_mod2)
 # term needed - deviance significant
 
 # additional question number 2
-help("zeroinfl")
 # fire up the zip glm
 zip1 <- pscl::zeroinfl(
             formula=satell ~ weight |  weight
