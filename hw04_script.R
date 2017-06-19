@@ -112,7 +112,6 @@ predict(crab_mod
 # 4.9
 # A
 
-help(relevel)
 crab_mod2 <- glm(
                 formula=sat_pres ~ relevel(factor(color), ref = 4)
                   , data=crabby
@@ -189,7 +188,7 @@ mbti <- read.csv("C:/Users/Philip/Schools/TAMU/STAT_659/homework/git_hw/mbti.csv
 
 # fit a model using the four scales as predictors 
 names(mbti) <- tolower(names(mbti))
-
+mbti
 mbti_mod <- glm(
                 formula=alc_flag ~ e_flag + s_flag + t_flag + j_flag
                 , data=mbti
@@ -202,6 +201,10 @@ summary(mbti_mod)
 
 predict(mbti_mod
         , newdata=data.frame(e_flag=1, s_flag=1, t_flag=1, j_flag=1)
+        ) 
+
+predict(mbti_mod
+        , newdata=data.frame(e_flag=1, s_flag=1, t_flag=1, j_flag=1)
         , type="response"
         ) 
 
@@ -210,3 +213,204 @@ predict(mbti_mod
         , newdata=data.frame(e_flag=1, s_flag=0, t_flag=1, j_flag=0)
         , type="response"
         ) 
+
+
+# 4.17
+mbti$i_flag <- abs(1-mbti$e_flag)
+
+test <- glm(
+  formula=alc_flag ~ i_flag + t_flag
+  , data=mbti
+  , family=binomial(link="logit")
+  , weights=freq
+  )
+summary(test)
+
+
+# 4.22
+# going to be using the crab data again
+
+crab_dat <- read.csv("C:/Users/Philip/Schools/TAMU/STAT_659/homework/git_hw/agresti_crab.csv")
+
+#encode a dummy flag for satellite
+crab_dat$sat_pres <- ifelse(crab_dat$satell > 0, 1, 0)
+
+# 4.22A - fit the model
+crab_dat_mod <- glm(
+       formula=sat_pres ~ relevel(factor(color), ref = 4) + weight
+                    , data=crab_dat
+                    , family=binomial(link="logit")
+                    )
+summary(crab_dat_mod)
+#4.22B - likelihood ratio test for effect of color
+anova(crab_dat_mod)
+1 - pchisq(13.698, df=3)
+
+#4.22C
+
+crab_dat_mod2 <- glm(
+        formula= sat_pres ~ color + weight
+          , data=crab_dat
+        , family=binomial(link="logit")
+                       )
+summary(crab_dat_mod2)
+anova(crab_dat_mod2)
+1 - pchisq(12.461, df=1)
+
+# 4.24
+# input the data
+duration <- c(45,15,40,83,90,25,35,65,95,35,75,45
+              , 50, 75,30,25,20,60,70,30,60,61,65,15,
+              20,45,15,25,15,30,40,15,135,20,40)
+trach <- c(0,0,0,1,1,1,0,0,0,0,0,1
+           , 1,1,0,0,1,1,1,0,0,0,0,1
+           , 1,0,1,0,1,0,0,1,1,1,1)
+y <- c(0,0,1,1,1,1,1,1,1,1,1,1
+       ,0,1,0,1,0,1,1,1,1,0,1,0,
+       0,1,0,1,0,1,1,0,1,0,0)
+sore <- cbind(duration, trach, y) %>%
+  data.frame()
+
+sore_mod <- glm(
+  formula= y ~ trach + duration
+  , data=sore
+  , family=binomial(link="logit")
+                  )
+summary(sore_mod)
+anova(sore_mod)
+1 - pchisq(12.44, df=1)
+# fit a model with an interaction term
+sore_mod <- glm(
+  formula= y ~ trach + duration + trach*duration
+  , data=sore
+  , family=binomial(link="logit")
+  )
+summary(sore_mod)
+anova(sore_mod)
+
+1 - pchisq(1.82, df=1)
+
+
+#4.30
+# input the data
+
+white_fl <- c(rep(1, 796+1625), rep(0,143+660))
+female_fl <- c(rep(1,796), rep(0,1625), rep(1,143), rep(0,660))
+
+grad_fl <- c(rep(1,498), rep(0,796-498)
+             , rep(1,878), rep(0,1625-878)
+             , rep(1,54), rep(0,143-54)
+             , rep(1,197), rep(0,660-197)
+             )
+athlete <- cbind(white_fl, female_fl, grad_fl) %>%
+  data.frame()
+
+athlete_mod <- glm(
+  formula= grad_fl ~ white_fl + female_fl
+  , data=athlete
+  , family=binomial(link="logit")
+                     )
+
+summary(athlete_mod)
+anova(athlete_mod)
+
+athlete_mod2 <- glm(
+  formula= grad_fl ~ white_fl + female_fl + white_fl*female_fl
+  , data=athlete
+  , family=binomial(link="logit")
+                     )
+summary(athlete_mod2)
+AIC(athlete_mod) - AIC(athlete_mod2)
+
+# Additional Problem
+
+berkeley <- array(c(512, 89, 313,19,
+                    353, 17,207,8,
+                    120,202,205,391,
+                    138,131,279,244,
+                    53,94,138,299,
+                    22,557,1493,1278
+                    )
+                  , dim=c(2,2,6)
+                  , dimnames=list(Gender=c("Male", "Female")
+                                  , Admit=c("Yes", "No")
+                                  , Department=c("1","2","3","4","5","6")
+                                  )
+                  )
+
+# Part A - report the conditional odds ratio for each department
+library(epitools)
+
+for(i in 1:dim(berkeley)[3]) {
+  obj <- berkeley[,,i] %>% epitools::epitab()
+  print("_________________")
+  print(paste("Department", i))
+  print(obj$tab)
+  print("__________________")
+  }
+
+# part B
+# construct a logistic regression to match the Breslow-Day test
+# build a model featuring the interaction term, grab the loglik and 
+# the degrees of freedom from that 
+# then build one without the interaction term, do the same thing 
+# LR = LRreduced - LRfull 
+# df = dffull - df reduced
+
+male <- c(rep(1,12), rep(0,12))
+dept <- c(rep(1,4), rep(2,4), rep(3,4), rep(4,4), rep(5,4), rep(6,4))
+y_flag <- c(rep(1,6), rep(0,6), rep(1,6), rep(0,6))
+freq <- c(512,353,120,138,53,22,313,207,205,279,138,351
+          , 89,17,202,131,94,24,19,8,391,244,299,317)
+berk_long <- cbind(male, dept, y_flag, freq) %>% data.frame()
+berk_long$dept <- relevel(factor(berk_long$dept), ref = 6)
+
+berk_modfull <- glm(
+  formula=y_flag ~ male + dept + male*dept
+                      , data=berk_long
+                    , family=binomial(link="logit")
+                    , weights=freq
+                    )
+berk_modred <- glm(formula=y_flag ~ male 
+                      , data=berk_long
+                    , family=binomial(link="logit")
+                    , weights=freq
+                    )
+
+logLik(berk_modfull)
+#295 on 6 df
+logLik(berk_modred)
+#2975 on 2 df
+
+1 - pchisq( (2975-295), df=6-2 )
+# very small p-value, odds ratios not significant
+
+berk_modcmh <- glm(formula=y_flag ~ male + dept
+                   , data=berk_long
+                   , family=binomial(link="logit")
+                   , weights=freq
+                   )  
+summary(berk_modcmh)
+anova(berk_modcmh)
+# when you control for department, the gender effect is wiped out
+
+berkeley2 <- berkeley[,,2:6]
+berkeley2
+berk_long2 <- subset(berk_long, dept != 1)
+
+BreslowDayTest(berkeley2)
+
+berk_mod_final <- glm(formula=y_flag ~ male + dept
+    , data=berk_long2
+    , family=binomial(link="logit")
+    , weights=freq
+    )
+summary(berk_mod_final)
+
+  glm(formula=y_flag ~ male 
+    , data=berk_long2
+    , family=binomial(link="logit")
+    , weights=freq
+    ) %>%
+summary()
+  
