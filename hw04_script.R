@@ -400,12 +400,20 @@ berk_long2 <- subset(berk_long, dept != 1)
 
 BreslowDayTest(berkeley2)
 
-berk_mod_final <- glm(formula=y_flag ~ male + dept
+berk_mod_fin_full <- glm(formula=y_flag ~ male + dept + male*dept
     , data=berk_long2
     , family=binomial(link="logit")
     , weights=freq
     )
-summary(berk_mod_final)
+
+berk_mod_fin_red <- glm(formula=y_flag ~ male 
+    , data=berk_long2
+    , family=binomial(link="logit")
+    , weights=freq
+    )
+logLik(berk_mod_fin_full)
+logLik(berk_mod_fin_red)
+summary(berk_mod_fin_full)
 
   glm(formula=y_flag ~ male 
     , data=berk_long2
