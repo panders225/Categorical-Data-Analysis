@@ -185,6 +185,9 @@ credit2$single_fl <- ifelse(credit2$sex...marital.status==3 | credit2$sex...mari
 table(credit2$divorce_fl, credit2$sex...marital.status)
 table(credit2$single_fl, credit2$sex...marital.status)
 
+credit2 <- credit2 %>% 
+  dplyr::select(-sex...marital.status)
+
 table(credit$creditability)
 credit_mod <- glm(formula=
                  creditability ~
@@ -198,15 +201,78 @@ credit_mod <- glm(formula=
                 , data=credit2
                 , family=binomial(link="logit")
                   )
-
-
+AIC(credit_mod)
 summary(credit_mod)
+
+credit_mod2 <- glm(formula=
+                 creditability ~
+                   relevel(as.factor(account.balance), ref=4) 
+                 + duration.of.credit..month.
+                 + payment.status.of.previous.credit
+#                + relevel(as.factor(purpose), ref= 10)
+                + divorce_fl
+                + single_fl
+                + male_fl
+                , data=credit2
+                , family=binomial(link="logit")
+                  )
+AIC(credit_mod2)
+summary(credit_mod2)
+
+credit_mod3 <- glm(formula=
+                 creditability ~
+                   relevel(as.factor(account.balance), ref=4) 
+                 + duration.of.credit..month.
+                 + payment.status.of.previous.credit
+                + relevel(as.factor(purpose), ref= 10)
+                + divorce_fl
+                + single_fl
+#                + male_fl
+                , data=credit2
+                , family=binomial(link="logit")
+                  )
+AIC(credit_mod3)
+summary(credit_mod3)
+
+credit_mod4 <- glm(formula=
+                 creditability ~
+                   relevel(as.factor(account.balance), ref=4) 
+                 + duration.of.credit..month.
+                 + payment.status.of.previous.credit
+                + relevel(as.factor(purpose), ref= 10)
+#                + divorce_fl
+                + single_fl
+#                + male_fl
+                , data=credit2
+                , family=binomial(link="logit")
+                  )
+AIC(credit_mod4)
+summary(credit_mod4)
+
+credit_mod5 <- glm(formula=
+                 creditability ~
+                   relevel(as.factor(account.balance), ref=4) 
+                 + duration.of.credit..month.
+                 + payment.status.of.previous.credit
+                + relevel(as.factor(purpose), ref= 10)
+#                + divorce_fl
+                + single_fl
+#                + male_fl
+                , data=credit2
+                , family=binomial(link="logit")
+                  )
+AIC(credit_mod5)
+summary(credit_mod5)
+
 
 
 # 5.13B - get an overall goodness of fit
 hlt <- ResourceSelection::hoslem.test(
     x=credit2$creditability
-    , y=fitted(credit_mod)
+    , y=fitted(credit_mod5)
     , g=10
 )
 hlt
+
+
+
