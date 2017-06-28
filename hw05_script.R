@@ -275,4 +275,110 @@ hlt <- ResourceSelection::hoslem.test(
 hlt
 
 
+# 5.14
+# input the data
+
+long <- cbind(
+c(rep(0, 4), rep(1,4), rep(2,4))
+, c(rep(1,1), rep(0,3), rep(1,2), rep(0,2), rep(1,4))
+) %>% data.frame()
+names(long) <- c("x", "response")
+
+short <- data.frame(
+x=c(0,1,2)
+, freq= c(4,4,4)
+, response=c(0.25,0.5,1)
+)
+
+# long first, intercept-only
+long_mod_int <- glm(
+                  formula=response~1
+                 , data=long
+                 , family=binomial(link="logit")
+                 )
+
+long_mod_cov <- glm(
+                  formula=response~x
+                 , data=long
+                 , family=binomial(link="logit")
+                 )
+
+short_mod_int <- glm(
+                  formula=response~1
+                  , data=short
+                  , family=binomial(link="logit")
+                  , weights=freq
+                  )
+short_mod_cov <- glm(
+                  formula=response~x
+                  , data=short
+                  , family=binomial(link="logit")
+                  , weights=freq
+                  )
+
+logLik(long_mod_int)
+logLik(short_mod_int)
+logLik(long_mod_cov)
+logLik(short_mod_cov)
+
+summary(long_mod_int)
+summary(short_mod_int)
+
+summary(long_mod_cov)
+summary(short_mod_cov)
+
+
+
+# 5.18
+# input the data
+
+smokes <- array(c(126, 35, 100, 61,
+        908, 497,688,807,
+        913, 336, 747, 598,
+        235, 58, 172, 121,
+        402, 121, 308, 215,
+        182, 72, 156, 98,
+        60, 11, 99, 43,
+        104, 21, 89, 36
+        )
+      , dim=c(2,2,8)
+      , dimnames=list(
+        smoke=c("smoke", "non")
+        , cancer=c("1","0")
+        , study=c("Beijing", "Shanghai", "Shenyang", "Nanjing"
+                  , "Harbin", "Zhengzhou", "Taiyuan", "Nanchang")
+      )
+)
+
+smokes2 <- ftable(smokes) %>% data.frame()
+smokes2$cancer_fl <- ifelse(smokes2$cancer=="1", 1,0)
+
+smokes2$smoke_fl <- ifelse(smokes2$smoke=="smoke", 1, 0)
+
+
+# construct a model
+smoke_mod <- glm(
+  formula=cancer_fl ~ study + smoke_fl
+  , data=smokes2
+  , family=binomial(link="logit")
+  , weights=Freq
+)
+
+summary(smoke_mod)
+exp(0.777062)
+
+(pear_stat <- sum(residuals(smoke_mod, type = "pearson")^2))
+1 - pchisq(pear_stat, df=sum(smokes2$Freq)-8 )
+
+par(mfrow=c(2,2))
+plot(smoke_mod)
+par(mfrow=c(1,1))
+plot(density(residuals(smoke_mod)))
+
+qqnorm(residuals(smoke_mod))
+qqline(residuals(smoke_mod))
+shapiro.test(residuals(smoke_mod))
+
+
+
 
