@@ -381,4 +381,70 @@ shapiro.test(residuals(smoke_mod))
 
 
 
+#5.21
 
+present <- c(48,38,5,1,1)
+total <- c(17114, 14502, 793, 127, 38)
+scores <- c(0, 0.5, 1.5, 4.0, 7.0)
+
+grouped_mod <- glm(formula=present/total ~ scores, weights=total
+           , family=binomial(link=make.link("identity")))
+summary(grouped_mod)
+
+# test a logistic model
+grouped_logit <- glm(formula=present/total ~ scores, weights=total
+           , family=binomial(link="logit"))
+summary(grouped_logit)
+library("elrm")
+
+exact_dset <- cbind(present, total, scores) %>%
+  data.frame()
+
+grouped_mod_exact <- elrm::elrm(
+        formula=present/total ~ scores
+        , dataset=exact_dset
+        , interest = ~scores
+        , iter=22200
+        , burnIn=2000
+                               )
+summary(grouped_mod_exact)
+plot(grouped_mod_exact)
+
+
+#5.22
+# input the data
+dset <- data.frame(
+    y=c(rep(0,4), rep(1,4))
+   , x=c(seq(10,40,by=10), seq(60,90,by=10))
+      )
+dumb_mod <- glm(formula=y~x
+                ,data=dset
+                , family=binomial(link="logit"))
+
+summary(dumb_mod)
+
+# add two observations
+dset <- rbind(dset,data.frame(y=c(1,0)
+           , x=rep(50,2)
+           )
+)
+
+# refit the model with the new data
+
+dumb_mod2 <- glm(formula=y~x
+                ,data=dset
+                , family=binomial(link="logit"))
+summary(dumb_mod2)
+
+
+# swap out the two new records with some new values
+dset <- dset[1:8,]
+dset[9,1] <- 1
+dset[9,2] <- 49.9
+dset[10,1] <- 0
+dset[10,2] <- 50.1
+dset
+dumb_mod3 <- glm(formula=y~x
+                ,data=dset
+                , family=binomial(link="logit"))
+summary(dumb_mod3)
