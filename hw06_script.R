@@ -131,3 +131,104 @@ exp(1.2128 + (-0.3189*4.3) + 1.1112) / (1 + exp(1.2128 + (-0.3189*4.3) + 1.1112)
 
 exp(-0.2819 + (-0.3189*4.3)) / (1 + exp(-0.2819 + (-0.3189*4.3)))
 exp(1.2128 + (-0.3189*4.3)) / (1 + exp(1.2128 + (-0.3189*4.3)))
+
+
+# 6.13
+# first, bring in the data 
+
+gender <- c(rep("Female",4), rep("Male",4))
+income <- rep(seq(1,4), 2)
+y1 <- c(1,2,0,0,1,0,0,0)
+y2 <- c(3,3,1,2,1,3,0,1)
+y3 <- c(11,17,8,4,2,5,7,9)
+y4 <- c(2,3,5,2,1,1,3,6)
+satis <- data.frame(gender=gender, income=income, y1=y1, y2=y2, y3=y3, y4=y4) 
+#satis$income <- factor(satis$income, levels=c("1", "2", "3", "4"))
+satis$gender <- factor(satis$gender, levels=c("Female", "Male"))
+
+satis_mod <- VGAM::vglm(cbind(y1, y2, y3, y4) ~ income 
+                        , data=satis
+                        , family=acat(parallel=TRUE)
+)
+
+summary(satis_mod)
+
+satis_mod2 <- MASS::polr(formula=cbind)
+  
+trt_fit <- MASS::polr(formula=response ~ therapy + gender
+                      ,  data=trt_dat
+                      , weights=counts)
+ideol.fit3 <- vglm(cbind(y1,y2,y3,y4,y5) ~ party
+                   , family=acat(reverse=TRUE, parallel=TRUE)
+                   ,data=ideology2)
+
+ideol.fit2 <- vglm(cbind(y1,y2,y3,y4,y5) ~ party
+                   , family=cumulative(parallel=FALSE)
+                   , data=ideology2)
+
+ideol.fit <- vglm(cbind(y1,y2,y3,y4,y5) ~ party
+                  , family=cumulative(parallel=TRUE)
+                  , data=ideology2)
+
+# 6.17
+# input the data
+
+gender <- c(rep("Female", 4), rep("Male", 4))
+loc <- c(rep("Urban",2), rep("Rural",2), rep("Urban",2), rep("Rural",2))
+sb <- rep(c("No", "Yes"),4)
+y1 <- c(7287, 11587,3246,6134,10381,10969,6123,6693)
+y2 <- c(175,126,73,94,136,83,141,74)
+y3 <- c(720,577,710,564,566,259,710,353)
+y4 <- c(91,48,159,82,96,37,188,74)
+y5 <- c(10,8,31,17,14,1,45,12)
+
+accidents <- data.frame(gender=gender, loc=loc, sb=sb, y1=y1, y2=y2, y3=y3, y4=y4, y5=y5)
+accidents
+
+# create a long dataset
+accidents_long <- rbind(
+data.frame(gender=gender, loc=loc, sb=sb, accident_code=1, counts=y1)
+, data.frame(gender=gender, loc=loc, sb=sb, accident_code=2, counts=y2)
+, data.frame(gender=gender, loc=loc, sb=sb, accident_code=3, counts=y3)
+, data.frame(gender=gender, loc=loc, sb=sb, accident_code=4, counts=y4)
+, data.frame(gender=gender, loc=loc, sb=sb, accident_code=5, counts=y5)
+)
+
+accidents_long$gender <- factor(accidents_long$gender
+                                , levels=c("Female", "Male"))
+
+accidents_long$accident_code <- factor(accidents_long$accident_code
+                                       , levels=c("1", "2", "3", "4", "5"))
+accidents_long$sb <- factor(accidents_long$sb
+                            , levels=c("No", "Yes"))
+# fit the baseline category model
+head(accidents_long, n=10)
+
+a_mod1 <- nnet::multinom(accident_code ~ gender + loc + sb
+                         , data=accidents_long
+                         , weights=counts
+                          )
+
+summary(a_mod1)
+
+# now fit the proportional odds model
+a_mod2 <- MASS::polr(formula=accident_code ~ gender + loc + sb
+                     , data=accidents_long
+                     , weights=counts
+                     )
+summary(a_mod2)
+
+a_mod3 <- VGAM::vglm(cbind(y1, y2, y3, y4, y5) ~ gender + loc + sb
+                        , data=accidents
+                        , family=acat(parallel=TRUE)
+                          )
+summary(a_mod3)
+
+
+summary(a_mod1)
+summary(a_mod2)
+summary(a_mod3)
+
+deviance(a_mod1)
+deviance(a_mod2)
+deviance(a_mod3)
