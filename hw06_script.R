@@ -89,8 +89,8 @@ pred_func(2)
 # input the data
 therapy <- c(rep("Seq", 8), rep("Alt", 8))
 response <- rep(c("prog", "NA", "partial", "complete"), 4)
-gender <- rep(c("M","F"), 8)
-counts <- c(28,4,45,12,29,5,26,2,41,12,44,7,20,3,20,1)
+gender <- c(rep("Male",4), rep("Female",4), rep("Male",4), rep("Female",4))
+counts <- c(28,45,29,26,4,12,5,2,41,44,20,20,12,7,3,1)
 trt_dat <- data.frame(
             therapy=therapy
             , response=response
@@ -101,7 +101,8 @@ trt_dat <- data.frame(
 
 trt_dat$therapy <- factor(trt_dat$therapy, levels=c("Seq", "Alt"))
 trt_dat$response <- factor(trt_dat$response, levels=c("prog", "NA", "partial", "complete"))
-trt_dat$gender <- factor(trt_dat$gender, levels=c("M", "F"))
+trt_dat$gender <- factor(trt_dat$gender, levels=c("Male", "Female"))
+trt_dat
 
 library('MASS')
 
@@ -115,14 +116,24 @@ summary(trt_fit)
 
 # fit another model
 
-trt_fit2 <- MASS::polr(formula=response ~ therapy + gender + therapy*gender
+trt_fit2 <- MASS::polr(formula=response ~ therapy + gender + therapy:gender
                       ,  data=trt_dat
                       , weights=counts)
 
 summary(trt_fit2)
 
-1 - pchisq(639.3827 - 633.9547, df=1)
+deviance(trt_fit)
+deviance(trt_fit2)
 
+1 - pchisq(deviance(trt_fit) - deviance(trt_fit2), df=1)
+#model does not represent a significantly better fit
+
+trt_dat$gender <- factor(trt_dat$gender, levels=c("Female", "Male"))
+trt_fit3 <- MASS::polr(formula=response ~ therapy + gender + therapy:gender
+                      ,  data=trt_dat
+                      , weights=counts)
+
+summary(trt_fit3)
 
 # 6.10
 
@@ -232,3 +243,7 @@ summary(a_mod3)
 deviance(a_mod1)
 deviance(a_mod2)
 deviance(a_mod3)
+
+AIC(a_mod1)
+AIC(a_mod2)
+AIC(a_mod3)
